@@ -7,13 +7,13 @@ import { RouterOutlet } from "@angular/router";
     standalone: true,
     selector: "app-root",
     template: `
-  <div class="container mx-auto">
-    <app-header />
-    <app-navigation />
-    <main>
-      <router-outlet />
-    </main>
-  </div>
+    <div class="container mx-auto">
+      <app-header />
+      <app-navigation />
+      <main>
+        <router-outlet />
+      </main>
+    </div>
   `,
     styles: [],
     imports: [HeaderComponent, NavigationComponent, RouterOutlet]
