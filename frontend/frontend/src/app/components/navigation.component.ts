@@ -8,17 +8,20 @@ import { RouterLink, RouterLinkActive } from "@angular/router";
         <nav>
             <div class="tabs">
                 <a routerLink="/home"
-                [routerLinkActive]="['tab-active']"
-                class="tab tab-lg tab-lifted"
-                >Home</a>
+                    [routerLinkActive]="['tab-active']"
+                    class="tab tab-lg tab-lifted"
+                    >Home
+                </a>
                 <a routerLink="/counter"
-                [routerLinkActive]="['tab-active']"
-                class="tab tab-lg tab-lifted"
-                >Counter</a>
+                    [routerLinkActive]="['tab-active']"
+                    class="tab tab-lg tab-lifted"
+                    >Counter
+                </a>
                 <a routerLink="/todos"
-                [routerLinkActive]="['tab-active']"
-                class="tab tab-lg tab-lifted"
-                >Todo List</a>
+                    [routerLinkActive]="['tab-active']"
+                    class="tab tab-lg tab-lifted"
+                    >Todo List
+                </a>
             </div>
         </nav>
     `,
