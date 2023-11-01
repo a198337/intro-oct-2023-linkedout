@@ -7,14 +7,24 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
-builder.Services.AddCors(builder => // "Promiscuous Mode"
+builder.Services.AddAuthentication().AddJwtBearer(opts =>
 {
-    builder.AddDefaultPolicy(pol =>
+    if (builder.Environment.IsDevelopment())
     {
-        pol.AllowAnyOrigin();
+        opts.RequireHttpsMetadata = false;
+    }
+});
+builder.Services.AddAuthorization();
+
+builder.Services.AddCors(cors => // "Promiscuous Mode"
+{
+    cors.AddDefaultPolicy(pol =>
+    {
+        var origins = builder.Configuration.GetSection("allowed-origins").Get<string[]>() ?? throw new Exception("Need The Origins");
+        pol.WithOrigins(origins);
         pol.AllowAnyMethod();
         pol.AllowAnyHeader();
+        pol.AllowCredentials();
     });
 });
 
@@ -23,12 +33,16 @@ var connectionString = builder.Configuration.GetConnectionString("database") ?? 
 builder.Services.AddMarten(options =>
 {
     options.Connection(connectionString);
-});
+}).UseLightweightSessions();
+
 builder.Services.AddScoped<UserService>();
+builder.Services.AddHttpContextAccessor();
 var app = builder.Build();
 
-app.UseCors();
 
+app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -36,18 +50,37 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapPost("/user/counter", async (CounterRequest request, IDocumentSession session, UserService user) =>
+app.MapPost("/user/logins", async (UserService userService, CancellationToken token) =>
 {
-    var userId = await user.GetUserId();
-    var doc = new UserCounter(userId, request.Current, request.By);
-    session.Store(doc);
-    await session.SaveChangesAsync();
+    await userService.LoginUserAsync(token); // feels like a command!
     return Results.Ok();
 });
 
-app.MapGet("/user/counter", async (IDocumentSession session, UserService user) =>
+
+app.MapGet("/tacos", async (ILogger<Program> logger, CancellationToken token) =>
 {
-    var userId = await user.GetUserId();
+    logger.LogInformation("Starting to handle a request");
+    await Task.Delay(3000, token);
+    logger.LogInformation("Done logging the request");
+    return Results.Ok();
+});
+
+app.MapPost("/user/counter", async (CounterRequest request,
+    IDocumentSession session,
+    UserService user,
+    CancellationToken token) =>
+{
+    var userId = await user.GetUserIdAsync(token);
+    var doc = new UserCounter(userId, request.Current, request.By);
+    session.Store(doc);
+    await session.SaveChangesAsync(token);
+    return Results.Ok(doc);
+}).RequireAuthorization();
+
+app.MapGet("/user/counter", async (IDocumentSession session, UserService user, CancellationToken token) =>
+{
+
+    var userId = await user.GetUserIdAsync(token);
     var doc = await session.Query<UserCounter>().SingleOrDefaultAsync(u => u.Id == userId);
     if (doc is null)
     {
@@ -57,11 +90,10 @@ app.MapGet("/user/counter", async (IDocumentSession session, UserService user) =
     {
         return Results.Ok(doc);
     }
-});
+}).RequireAuthorization();
 
-app.Run(); //this runs the api
+app.Run();
+
 
 public record CounterRequest(int Current, int By);
-
 public record UserCounter(Guid Id, int Current, int By);
-
